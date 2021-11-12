@@ -1,4 +1,4 @@
-impot time
+import time
 
 def prune(item,freq_itemsets):
     for i in range(len(item)):
@@ -40,11 +40,11 @@ def hash_for_2_candidates(transactions, freq_itemsets, minSupport):
                 freq_t.append(j)
         for it1 in range(len(freq_t)):
             for it2 in range(len(freq_t)):
-                if freq_t[it1]<freq_t[it2]:
-                    if (freq_t[it1], freq_t[it2]) in counter:
-                        counter[(freq_t[it1], freq_t[it2])] = counter[(freq_t[it1], freq_t[it2])] + 1
-                    else:
+                if freq_t[it2]>freq_t[it1]:
+                    if (freq_t[it1], freq_t[it2]) not in counter:
                         counter[(freq_t[it1], freq_t[it2])]=1
+                    else:
+                        counter[(freq_t[it1], freq_t[it2])] = counter[(freq_t[it1], freq_t[it2])] + 1
 
     updated_items = []
     
@@ -56,8 +56,16 @@ def hash_for_2_candidates(transactions, freq_itemsets, minSupport):
     
     
 def update_items(dataset, candidates, minsup, mark):
-    counter = [0 for i in candidates]
-    future_transactions = [[] for i in candidates]
+
+
+    counter = []
+    future_transactions = []
+    for i in range(len(candidates)):
+        counter.append(0)
+        future_transactions.append([])
+
+
+
     for i in range(len(dataset)):
         if mark[i]:
             for j in range(len(candidates)):
@@ -69,8 +77,8 @@ def update_items(dataset, candidates, minsup, mark):
     for i in range(len(candidates)):
         if counter[i]>=minsup:
             updated_items.append(candidates[i])
-            for j in future_transactions[i]:
-                new_mark[j] = True
+            for j in range(len(future_transactions[i])):
+                new_mark[future_transactions[i][j]] = True
     return updated_items, new_mark
 
 def _all_one_itemset(data):
@@ -119,7 +127,9 @@ if __name__=="__main__":
         
         k=2
         while candidates:
-            frequent_itemset[k], mark = update_items(dataset, candidates, minsup, mark)
+            itemss = update_items(dataset, candidates, minsup, mark)
+            frequent_itemset[k] = itemss[0]
+            mark = itemss[1] 
             candidates = aprioriGen(frequent_itemset[k])
             k = k+1
         
@@ -128,4 +138,4 @@ if __name__=="__main__":
             print(frequent_itemset[i])
         
         print(f'TIME: {time.time()-start_time} seconds')
-r
+
