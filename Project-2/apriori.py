@@ -55,7 +55,7 @@ def hash_for_2_candidates(transactions, freq_itemsets, minSupport):
     return updated_items
     
     
-def update_items(dataset, candidates, minsup, mark):
+def update_items(dataset, candidates, minsup):
 
 
     counter = []
@@ -67,19 +67,15 @@ def update_items(dataset, candidates, minsup, mark):
 
 
     for i in range(len(dataset)):
-        if mark[i]:
-            for j in range(len(candidates)):
-                if set(candidates[j]) <= set(dataset[i]):
-                    counter[j]+=1
-                    future_transactions[j].append(i)
-    new_mark = [False for i in dataset]
+        for j in range(len(candidates)):
+            if set(candidates[j]) <= set(dataset[i]):
+                counter[j]+=1
+                future_transactions[j].append(i)
     updated_items = []
     for i in range(len(candidates)):
         if counter[i]>=minsup:
             updated_items.append(candidates[i])
-            for j in range(len(future_transactions[i])):
-                new_mark[future_transactions[i][j]] = True
-    return updated_items, new_mark
+    return updated_items
 
 def _all_one_itemset(data):
     ans = []
@@ -103,39 +99,86 @@ def getData(filename):
     print(f'\nThe dataset has {len(data)} transactions with average {sm/len(data)} items per transaction.')
     return data
 
+def update_items_from_partitions(dataset, candidates, minsup, partition_count):
+    
+    starting_index = 0
+    ans = []
+    minsup = minsup // partition_count
+    
+    tt = []
+    
+    for i in range(partition_count):
+        
+        lst = time.time()
+        
+        it1 = starting_index
+        it2 = starting_index + len(dataset)//partition_count-1
+        starting_index = it2 + 1
+        
+        counter = []
+        future_transactions = []
+        
+        for i in range(len(candidates)):
+            counter.append(0)
+            future_transactions.append([])
+        
+        for i in range(it1, it2+1):
+            for j in range(len(candidates)):
+                if set(candidates[j]) <= set(dataset[i]):
+                    counter[j]+=1
+                    future_transactions[j].append(i)
+                    
+        updated_items = []
+
+        for i in range(len(candidates)):
+            if counter[i]>=minsup:
+                updated_items.append(candidates[i])
+                
+        tt.append(time.time()-lst)
+        ans = ans + updated_items
+        new_ans = []
+        for elem in ans:
+            if elem not in new_ans:
+                new_ans.append(elem)
+        ans = new_ans.copy()
+
+    return ans, max(tt)
 
 if __name__=="__main__":
     
+    partition_count = 6
     dataset = getData('SIGN.txt')
     all_one_itemset = _all_one_itemset(dataset)
+#     _minsup = [600, 550, 500, 450]
     _minsup = [400]
 
     for minsup in _minsup:
 
         print(f'\nMINSUP: {minsup}')
-        start_time = time.time()
 
-        mark = []
-
-        for i in range(len(dataset)):
-            mark.append(True)
+        tot_time = 0
 
         frequent_itemset = dict()
-        frequent_itemset[1], mark = update_items(dataset, all_one_itemset, minsup, mark)
+        lst = time.time()
+        frequent_itemset[1] = update_items(dataset, all_one_itemset, minsup)
         frequent_itemset[2] = hash_for_2_candidates(dataset, frequent_itemset[1], minsup)
+        tot_time = tot_time + time.time()-lst
         candidates = frequent_itemset[2]
         
         k=2
         while candidates:
-            itemss = update_items(dataset, candidates, minsup, mark)
-            frequent_itemset[k] = itemss[0]
-            mark = itemss[1] 
+            candidates, tt = update_items_from_partitions(dataset, candidates, minsup, partition_count)
+            tot_time = tot_time + tt
+            
+            lst = time.time()
+            frequent_itemset[k] = update_items(dataset, candidates, minsup)
             candidates = aprioriGen(frequent_itemset[k])
+            tot_time = tot_time + time.time()-lst
             k = k+1
         
         for i in frequent_itemset:
             print('NUMBER OF ITEMS: ', i)
             print(frequent_itemset[i])
         
-        print(f'TIME: {time.time()-start_time} seconds')
+        print(f'TIME: {tot_time} seconds')
 
